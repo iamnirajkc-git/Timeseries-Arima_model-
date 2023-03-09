@@ -1,0 +1,119 @@
+---
+title: "timeseries(arima model)"
+output:
+  html_document:
+    df_print: paged
+  word_document: default
+date: "2023-03-09"
+---
+#loading file
+```{r}
+library(readxl)
+gdp <- read_excel("/Users/nirajkc/Desktop/gdp.xlsx")
+View(gdp) 
+```
+
+
+
+```{r}
+class(gdp)
+```
+To check class of dataset, R is not recognizing the time series,
+Changing into timeseries with ts(), start with min date and max date,
+frequency is 4 as it is quaterly data
+
+```{r}
+gdptime=ts(gdp$GDP, start = min(gdp$DATE), end = max(gdp$DATE), frequency = 4)
+```
+###to check class now###
+```{r}
+class(gdptime)
+```
+##package instillation for arima model
+
+
+install.packages("tseries")
+install.packages("forecast")
+```{r}
+library(forecast) 
+library(tseries) 
+```
+plotting line graph
+```{r}
+plot(gdptime)
+```
+
+
+
+The ARIMA (Autoregressive Integrated Moving Average) model has some assumptions that should be met in order to obtain accurate and reliable results. Here are some of the key assumptions of the ARIMA model:
+Stationarity: The time series should be stationary, which means that its statistical properties should not change over time. This includes a constant mean, constant variance, and constant autocorrelation structure. If the time series is non-stationary, it can be made stationary by applying differencing or other transformations.
+
+Linearity: The relationship between the time series and its past values should be linear. This means that the model assumes that the effects of past values on the current value are additive and proportional to the time lag.
+
+Normality: The residuals of the ARIMA model should be normally distributed with mean zero and constant variance. This assumption can be checked using diagnostic plots and statistical tests.
+
+Independence: The residuals should be independent of each other, meaning that there should be no correlation between the residuals at different time lags.
+
+Parsimony: The model should be as simple as possible while still capturing the essential features of the time series. This means that the model should not be overparameterized or include unnecessary variables.
+
+
+###First checking auto correlation
+spikes line is crossing blue line, so not Stationarity.
+
+
+
+
+
+```{r}
+acf(gdptime)
+```
+spikes line is crossing blue line, so not Stationarity.
+
+partial auto correlation, have no issue, lines not crossing blue lines
+```{r}
+pacf(gdptime)
+```
+Augmented Dickey-Fuller (ADF) test
+if the p-value is greater than the level of significance, we fail to 
+reject the null hypothesis and conclude that the time series is non-stationary.
+```{r}
+adf.test(gdptime)
+```
+Now we need to make data stationary.
+auto.arima() function will take care of that.
+
+```{r}
+gdpmodel=auto.arima(gdptime,ic="aic", trace=TRUE)
+gdpmodel
+```
+Now again check auto correction.
+```{r}
+acf(ts(gdpmodel$residuals))
+pacf(ts(gdpmodel$residuals))
+```
+
+##Now doing forecast, confidence interval=95%, forecast 10 years for 4 quaters
+```{r}
+mygdpforecast=forecast(gdpmodel, level = c(95), h=10*4)
+mygdpforecast
+```
+
+##plot
+
+```{r}
+plot(mygdpforecast)
+```
+##Validate forecast, 
+p-value is checked with diff lag values in Box.test
+When performing the Ljung-Box test (as implemented in Box.test), the null hypothesis is that there is no autocorrelation in the residuals of a time series model, up to a specified lag.
+
+If the p-value from the Ljung-Box test is greater than the chosen level of significance (usually 0.05)
+
+```{r}
+Box.test(mygdpforecast$resid, lag=5, type="Ljung-Box")
+Box.test(mygdpforecast$resid, lag=15, type="Ljung-Box")
+Box.test(mygdpforecast$resid, lag=30, type="Ljung-Box")
+```
+
+##Model performed well
+##The END
